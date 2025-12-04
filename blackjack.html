@@ -386,9 +386,12 @@
 
       // Dealer
       dealer.forEach((c, idx) => {
-        const isHole = (idx === 0 && dealerHole !== null && hideDealerHole);
-        const el = makeCardEl(isHole ? null : c, isHole);
-        dealerCardsEl.appendChild(el);
+            // Only hide the first card (index 0) if the flag `hideDealerHole` is true
+            const isHole = (idx === 0 && hideDealerHole);
+            // If it's the hole card and we're hiding it, pass null for card data
+            const cardToRender = isHole ? null : c;
+            const el = makeCardEl(cardToRender, isHole);
+            dealerCardsEl.appendChild(el);
       });
 
       // Player
@@ -436,8 +439,12 @@
 
       // initial dealing: dealer gets a hole card then a face up card; player gets two cards
       // We'll push hole as first dealer card and hide.
-      dealer.push(deck.pop()); // hole
-      dealer.push(deck.pop()); // face-up
+
+      const holeCard = deck.pop();
+      dealer.push(holeCard); // hole (index 0)
+      dealer.push(deck.pop()); // face-up (index 1)
+      dealerHole = holeCard; // **<- KEY REVISION: Store the hole card here**
+
       player.push(deck.pop());
       player.push(deck.pop());
 
