@@ -720,6 +720,21 @@
 
     // Accessibility: announce changes
     // (messageEl is in aria-live context via parent)
+
+    // Quick console test using existing handValue()
+    function testBlackjackDetection_console() {
+      const testPlayer = [
+        { rank: 'A', suit: '♥' },
+        { rank: 'K', suit: '♠' }
+      ];
+      const val = handValue(testPlayer).total;
+      if (val === 21 && testPlayer.length === 2) {
+        console.log('✅ Blackjack detection PASSED (console test).');
+      } else {
+        console.error('❌ Blackjack detection FAILED. Got:', val);
+      }
+    }
+    testBlackjackDetection_console();
   </script>
 </body>
 </html>
