@@ -125,8 +125,8 @@ Repeat the same steps for iteration 1, but you can experiment here by changing a
 
 ### 2.4 Polishing (Optional)
 
-If you finished earlier, do some polishing on your code. Here are some ideas:
-* Better Cards Graphics (if not done before)
+If you finished earlier, do some polishing on your code. Here are some ideas (if not done before):
+* Better Cards Graphics
 * Score of Wins/Losses
 * Multiplayer
 * Betting
