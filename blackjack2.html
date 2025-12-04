@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Blackjack — Bankroll</title>
+
+<style>
+:root{
+  --bg:#0b1320;
+  --card:#ffffff;
+  --muted:#9fb0c7;
+  --accent:#3ddc84;
+  --panel:#0f2433;
+  --glass: rgba(255,255,255,0.04);
+  --red:#d32f2f;
+  --green:#2e7d32;
+  --shadow: 0 8px 20px rgba(0,0,0,0.6);
+}
+
+html,body{
+  height:100%;
+  background:linear-gradient(180deg,#071122 0%, #051826 100%);
+  color:white;
+  font-family: Inter, system-ui;
+}
+
+body{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:20px;
+}
+
+.app{
+  width:960px; max-width:96vw;
+  display:grid;
+  grid-template-columns: 1fr 340px;
+  gap:16px;
+}
+
+.table, .sidebar{
+  background:#04202a;
+  padding:16px;
+  border-radius:12px;
+}
+
+/* Cards */
+.cards{display:flex;gap:10px;min-height:110px;flex-wrap:wrap}
+.card{
+  width:70px;
+  height:95px;
+  border-radius:10px;
+  background:white;
+  color:black;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  padding:6px;
+  font-weight:bold;
+}
+.card.red{color:#d32f2f}
+.card.black{color:black}
+.card.face-down{
+  background:#0a2636;
+  color:white;
+  justify-content:center;
+  align-items:center;
+  font-size:20px;
+}
+
+button{
+  padding:10px;
+  border-radius:8px;
+  border:none;
+  font-weight:bold;
+  cursor:pointer;
+  background:#15394a;
+  color:white;
+}
+
+button:disabled{
+  opacity:0.5;
+  pointer-events:none;
+}
+
+.btn-row{display:flex;gap:6px;flex-wrap:wrap}
+.score{display:flex;justify-content:space-between;padding:10px;background:#092736;border-radius:8px;margin-bottom:10px}
+
+.chip{padding:6px 12px;border-radius:40px;background:#062b3a}
+
+@media(max-width:850px){
+  .app{grid-template-columns:1fr}
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <div class="table">
+
+    <h2>Blackjack</h2>
+    <div id="message">Set bet & Deal</div>
+
+    <br>
+
+    <div class="score">
+      <div>Bankroll: $<span id="bankroll">1000</span></div>
+      <div>Bet: $<span id="bet">50</span></div>
+    </div>
+
+    <div>
+      <h4>Dealer <span id="dealerValue"></span></h4>
+      <div id="dealerCards" class="cards"></div>
+    </div>
+
+    <div>
+      <h4>Player <span id="playerValue"></span></h4>
+      <div id="playerCards" class="cards"></div>
+    </div>
+
+    <br>
+
+    <div class="btn-row">
+      <button onclick="changeBet(-25)">-25</button>
+      <button onclick="changeBet(25)">+25</button>
+      <button onclick="maxBet()">Max</button>
+      <button id="dealBtn" onclick="deal()">Deal</button>
+      <button id="hitBtn" onclick="hit()" disabled>Hit</button>
+      <button id="standBtn" onclick="stand()" disabled>Stand</button>
+      <button id="doubleBtn" onclick="doubleDown()" disabled>Double</button>
+      <button id="splitBtn" onclick="split()" disabled>Split</button>
+      <button onclick="resetFunds()">Reset Bank</button>
+    </div>
+
+  </div>
+
+  <div class="sidebar">
+    <h3>Score</h3>
+    <div>Wins: <span id="wins">0</span></div>
+    <div>Losses: <span id="losses">0</span></div>
+    <div>Pushes: <span id="pushes">0</span></div>
+  </div>
+
+</div>
+
+<script>
+const suits = ['♠','♥','♦','♣'];
+const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+
+let deck=[], dealer=[], playerHands=[], currentHand=0
+
+let bankroll = Number(localStorage.getItem("bankroll")) || 1000;
+let baseBet = Number(localStorage.getItem("bet")) || 50;
+let results = JSON.parse(localStorage.getItem("results")) || {wins:0,losses:0,push:0}
+
+updateUI()
+
+function createDeck(){
+ let d=[]
+ for(let s of suits){
+  for(let r of ranks){
+    d.push({suit:s,rank:r})
+  }
+ }
+ return d.sort(()=>Math.random()-0.5)
+}
+
+function value(hand){
+ let total=0,aces=0
+ for(let c of hand){
+  if(c.rank=='A'){aces++;total+=11}
+  else if(['K','Q','J'].includes(c.rank)) total+=10
+  else total+=Number(c.rank)
+ }
+ while(total>21 && aces>0){total-=10;aces--}
+ return total
+}
+
+function renderCards(el,cards,hidden=false){
+ el.innerHTML=""
+ cards.forEach((c,i)=>{
+  let d=document.createElement('div')
+  if(hidden && i===0){
+    d.className="card face-down"
+    d.textContent="?"
+  }else{
+    d.className="card "+(c.suit=='♥'||c.suit=='♦'?'red':'black')
+    d.innerHTML=`<div>${c.rank}${c.suit}</div><div>${c.suit}</div><div>${c.rank}${c.suit}</div>`
+  }
+  el.appendChild(d)
+ })
+}
+
+function updateUI(){
+  bankroll = Math.max(0,bankroll)
+  localStorage.setItem("bankroll",bankroll)
+  localStorage.setItem("bet",baseBet)
+  localStorage.setItem("results",JSON.stringify(results))
+
+  document.getElementById("bankroll").textContent=bankroll
+  document.getElementById("bet").textContent=baseBet
+  document.getElementById("wins").textContent=results.wins
+  document.getElementById("losses").textContent=results.losses
+  document.getElementById("pushes").textContent=results.push
+}
+
+function changeBet(n){
+ if(bankroll<10) return
+ baseBet+=n
+ if(baseBet<10) baseBet=10
+ if(baseBet>bankroll) baseBet=bankroll
+ updateUI()
+}
+
+function maxBet(){
+ baseBet=bankroll
+ updateUI()
+}
+
+function deal(){
+ if(bankroll<baseBet){alert("Not enough money");return}
+
+ bankroll-=baseBet
+
+ deck=createDeck()
+ dealer=[deck.pop(),deck.pop()]
+ playerHands=[{cards:[deck.pop(),deck.pop()],bet:baseBet,doubled:false,done:false}]
+ currentHand=0
+
+ render()
+ enablePlay()
+
+ if(value(playerHands[0].cards)==21) stand()
+}
+
+function render(){
+ renderCards(dealerCards,dealer,true)
+ renderCards(playerCards,playerHands[currentHand].cards,false)
+ dealerValue.textContent=""
+ playerValue.textContent=value(playerHands[currentHand].cards)
+}
+
+function enablePlay(){
+ hitBtn.disabled=false
+ standBtn.disabled=false
+ doubleBtn.disabled = !(playerHands[0].cards.length==2 && bankroll>=baseBet)
+ splitBtn.disabled = !(playerHands[0].cards[0].rank === playerHands[0].cards[1].rank && bankroll>=baseBet)
+}
+
+function hit(){
+ let h=playerHands[currentHand]
+ h.cards.push(deck.pop())
+ render()
+ if(value(h.cards)>=21) stand()
+}
+
+function stand(){
+ let h=playerHands[currentHand]
+ h.done=true
+
+ if(currentHand < playerHands.length-1){
+  currentHand++
+  render()
+  return
+ }
+
+ dealerPlay()
+}
+
+function doubleDown(){
+ let h=playerHands[currentHand]
+ bankroll-=h.bet
+ h.bet*=2
+ h.cards.push(deck.pop())
+ stand()
+}
+
+function split(){
+ let h=playerHands[0]
+ let c2=h.cards.pop()
+
+ bankroll-=baseBet
+
+ playerHands=[
+  {cards:[h.cards[0],deck.pop()],bet:baseBet,doubled:false,done:false},
+  {cards:[c2,deck.pop()],bet:baseBet,doubled:false,done:false}
+ ]
+
+ render()
+ enablePlay()
+}
+
+function dealerPlay(){
+ renderCards(dealerCards,dealer,false)
+
+ while(value(dealer)<17){
+  dealer.push(deck.pop())
+  renderCards(dealerCards,dealer,false)
+ }
+
+ let dv=value(dealer)
+
+ playerHands.forEach(h=>{
+  let pv=value(h.cards)
+  if(pv>21){results.losses++}
+  else if(dv>21 || pv>dv){
+    bankroll+=h.bet*2
+    results.wins++
+  }
+  else if(pv==dv){
+    bankroll+=h.bet
+    results.push++
+  }
+  else results.losses++
+ })
+
+ updateUI()
+ disablePlay()
+}
+
+function disablePlay(){
+ hitBtn.disabled=true
+ standBtn.disabled=true
+ doubleBtn.disabled=true
+ splitBtn.disabled=true
+}
+
+function resetFunds(){
+ bankroll=1000
+ updateUI()
+}
+</script>
+</body>
+</html>
